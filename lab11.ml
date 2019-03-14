@@ -83,7 +83,7 @@ let x3 = 3, 3 * 3, 3 ;;
 
 (* 4. *)
 
-let x4 = List.map ((+) 3.) [4., 5., 6.] ;;
+let x4 = List.map ((+) 3.) [4.; 5.; 6.] ;;
 
 (* place a typing for x3 here *)
 
@@ -188,7 +188,7 @@ textbook.
  *)
 
 (*====================================================================
-Part 3. Binary search trees and Gorn addresses
+Part 4. Binary search trees and Gorn addresses
 
 In this section, you'll work with binary search trees, and learn about
 a method for specifying particular nodes in trees due to computer
@@ -288,9 +288,11 @@ Right, Right].
 
 ......................................................................
 Exercise 9. Define a function gorn : 'a -> 'a bintree -> direction
-list that given an item and a binary search tree returns the Gorn
-address of the item in the tree. It should raise a Failure exception
-if the item doesn't occur in the tree. For instance,
+list that given a value and a binary search tree returns the Gorn
+address of a node with that value in the tree. (In case of multiple
+nodes with the same value, the address of any of them can be
+returned.) It should raise a Failure exception if the item doesn't
+occur in the tree. For instance,
 
     # gorn 9 tr ;;
     - : direction list = [Left; Right; Right]
