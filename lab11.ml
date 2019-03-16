@@ -3,6 +3,11 @@
                               Synthesis
  *)
 
+(*
+                               SOLUTION
+ *)
+
+
 (* Objective:
 
 This lab is intended to provide a review and synthesis of the first
@@ -34,19 +39,74 @@ let f1 b = if b then () else () ;;
 
 (* 2. f2 : int -> int option *)
 
-let f2 _ = failwith "f2 not implemented" ;;
+(* One approach is to separately enforce the argument being an int and
+   the return type being an int option: *)
+
+let f2 x =
+  let _ = x + 1 in
+  Some 3 ;;
+
+(* A more elegant approach makes use of the argument int in the
+   return: *)
+   
+let f2 x = Some (x + 0) ;;
 
 (* 3. f3 : 'a * bool -> 'a *)
 
-let f3 _ = failwith "f3 not implemented" ;;
-  
+(* Here, we destructure the pair in the function definition
+   itself. Using b in the test part of a conditional types it as a
+   boolean. Returning x in both branches guarantees that the type of x
+   and the return value are the same, but otherwise places no
+   restriction on the type of x. *)
+
+let f3 (x, b) = if b then x else x ;;
+
 (* 4. f4 : 'a -> 'b list option *)
 
-let f4 _ = failwith "f4 not implemented" ;;
+(* To get the argument type to be polymorphic, we just ignore the
+   argument entirely. The tricky part is returning a 'b list
+   option. One of the only polymorphic list values is the empty list;
+   almost any non-empty list has a first element of some type more
+   specific than 'a (though see alternative below). This leads to: *)
+
+let f4 x = Some [] ;;
+
+(* The only exception (pardon the pun) to a nonempty list of
+   polymorphic type is if its elements fail to return, that is, raise
+   exceptions, e.g., *)
+
+let f4 x = Some [raise Exit] ;;
 
 (* 5. f5: ('a -> 'b) -> ('b -> 'c) -> ('a -> 'c) *)
 
-let f5 _ = failwith "f5 not implemented" ;;
+(* The requested function takes two arguments, call them f and g. It
+   then returns a function, which could be implemented as an anonymous
+   function. So far, we have
+
+     let f5 f g =
+       fun x -> ...
+
+   The types so far are:
+
+     f : 'a -> 'b
+     g : 'b -> 'c
+     x : 'a
+
+   It makes type sense then to apply f to x, generating a value of
+   type 'b. We can then apply g to that value generating a value of
+   type 'c. Since 'c is the intended type for the return value of the
+   result function, we just return it.
+
+     let f5 f g =
+       fun x -> g (f x) ;;
+
+   If we want, we can "sugar" this further using the compact function
+   notation: *)
+
+  let f5 f g x = g (f x) ;;
+
+(* You may recognize this kind of thing from Section 9.5 of the
+   textbook on "Function composition". *)
 
 (*....................................................................
 Exercise 2. For each of the following top-level let definitions, give
@@ -73,26 +133,28 @@ let g x =
 
 let x = let y x = x in y ;;
 
-(* place a typing for x here *)
+(x : 'a -> 'a) ;;
 
 (* 3. *)
 
 let x3 = 3, 3 * 3, 3 ;; 
 
-(* place a typing for x2 here *)
+(x3 : int * int * int) ;;
 
 (* 4. *)
 
-let x4 = List.map ((+) 3.) [4.; 5.; 6.] ;;
+(* let x4 = List.map ((+) 3.) [4.; 5.; 6.] ;; *)
 
-(* place a typing for x3 here *)
+(* The expression doesn't type. The + function is of type int -> int
+   -> int but it is being applied to a float. It is thus commented out
+   above. *) 
 
 (* 5. *)
 
 let x5 = let open List in
         fun y -> filter ((=) y) ;;
 
-(* place a typing for x5 here *)
+(x5 : 'a -> 'a list -> 'a list) ;;
 
 (*====================================================================
 Part 2. Defining some functions
@@ -110,7 +172,8 @@ Exercise 4. Provide your own definition of the function string_of_bool
 (without using Pervasives.string_of_bool of course).
 ....................................................................*)
 
-let string_of_bool _ = failwith "string_of_bool not implemented" ;;
+let string_of_bool (b : bool) : string = 
+  if b then "true" else "false" ;;
 
 (*....................................................................
 Exercise 3. What is the type of string_of_bool? Give it as a typing,
@@ -119,7 +182,8 @@ like
     (string_of_bool : ...) ;;
 ....................................................................*)
          
-(* place your typing here *)
+(string_of_bool : bool -> string) ;;
+
 
 (* Recall that the Pervasives.compare function compares two values,
 returning an int based on their relative magnitude: compare x y
@@ -155,10 +219,12 @@ the complexity? We're looking for a brief informal argument here, not
 a full derivation of its complexity.
 ....................................................................*)
 
-(* place your explanation in this comment:
-
-   ...
- *)
+(* ANSWER: Since length is linear in the length of its argument,
+   compare_lengths is linear in the sum of the lengths of its two
+   arguments. But that sum is less than or equal to twice the length
+   of the longer argument. Thus, compare_lengths is in O(2n), where
+   n is the length of the longer argument, hence, dropping
+   multiplicative constants, O(n). *)
 
 (*....................................................................
 Exercise 6. Provide an alternative implementation of compare_lengths
@@ -166,7 +232,12 @@ whose complexity is O(n) where n is the length of the shorter of the
 two lists, not the longer.
 ....................................................................*)
 
-let compare_lengths _ = failwith "compare_lengths not implemented" ;;
+let rec compare_lengths xs ys =
+  match xs, ys with
+  | [], [] -> 0
+  | _, [] -> 1
+  | [], _ -> -1
+  | _xhd :: xtl, _yhd :: ytl -> compare_lengths xtl ytl ;;
 
 (*====================================================================
 Part 3. Substitution semantics
@@ -181,10 +252,15 @@ evaluates to 5 according to the substitution semantics rules in the
 textbook.
 ....................................................................*)
 
-(* place your derivation in this comment here:
-
-     ....
-     
+(*
+    fun x -> x + 2 =>
+                   |  (fun x -> x + 2) => (fun x -> x + 2)
+                   |  3 => 3
+                   |  3 + 2 =>
+                            |  3 => 3
+                            |  2 => 2
+                            => 5
+                   => 5
  *)
 
 (*====================================================================
@@ -234,13 +310,26 @@ succinctly but specifically as you can and describing how it might be
 fixed.
 ....................................................................*)
 
-(* ..list bugs here... *)
+(*
+    1: rec keyword missing 
+    1: bintree should be 'a bintree (twice)
+    2: bintree should be tree
+    5: test is wrong parity; should be if item < old ...
+    6, 8: missing middle argument (old) for Node constructor
+*)
 
 (*....................................................................
 Exercise 8a. Now correct the code above for the insert function.
 ....................................................................*)
 
-let insert _ = failwith "insert not implemented" ;;
+let rec insert (item : 'a) (tree : 'a bintree) : 'a bintree =
+  match tree with
+  | Empty -> Node (Empty, item, Empty)
+  | Node (left, old, right) ->
+     if item < old then
+       Node (insert item left, old, right)
+     else
+       Node (left, old, insert item right) ;;
      
 (* Using the insert function (as corrected), we can, for instance,
 build a tree containing 10, 5, 15, 7, and 9, which looks like
@@ -302,7 +391,15 @@ occur in the tree. For instance,
     Exception: Failure "gorn: item not found".
 ....................................................................*)
 
-let gorn _ = failwith "gorn not implemented" ;;
+let rec gorn item tree =
+  match tree with
+  | Empty -> failwith "gorn: item not found"
+  | Node (left, old, right) ->
+     if item = old then []
+     else if item < old then
+       Left :: gorn item left
+     else
+       Right :: gorn item right ;;
 
 (*....................................................................
 Exercise 10. Define a function find : 'a -> 'a bintree -> bool that
@@ -316,7 +413,29 @@ defining find. Examples of the find function in use include:
     - : bool = false
 ....................................................................*)  
 
-let find _ = failwith "find not implemented" ;;
+(* Since the gorn function already finds the node in the tree
+   (returning its Gorn address), we can use it directly. If the item
+   is not found, we simply trap the Failure exception and return
+   false. *)
+  
+let find item tree =
+  try
+    let _ = gorn item tree
+    in true
+  with
+  | Failure _ -> false ;;
+
+(* As an aside, later chapters on imperative programming introduce
+   sequencing and the ignore function, which allows the following more
+   idiomatic OCaml version of the function:
+
+let find item tree =
+  try
+    ignore (gorn item tree);
+    true
+  with
+  | Failure _ -> false ;;
+ *)
 
 (*
                               END OF LAB
